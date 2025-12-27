@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pembukuan Sederhana</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.06);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      font-size: 14px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: .9;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .summary .box {
+      padding: 12px;
+      border-radius: 12px;
+      background: #f9fafb;
+    }
+
+    .box h3 {
+      font-size: 12px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .box p {
+      margin: 6px 0 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .in { color: var(--success); }
+    .out { color: var(--danger); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    @media (min-width: 640px) {
+      body { max-width: 480px; margin: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Pembukuan Sederhana</h1>
+
+  <!-- FORM INPUT -->
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Saldo Awal</label>
+        <input type="number" id="saldoAwal" placeholder="Masukkan saldo awal" />
+      </div>
+
+      <div>
+        <label>Tanggal Transaksi</label>
+        <input type="date" id="tanggal" />
+      </div>
+
+      <div>
+        <label>Jenis Transaksi</label>
+        <select id="jenis">
+          <option value="credit">Credit (Uang Masuk)</option>
+          <option value="debit">Debit (Uang Keluar)</option>
+          <option value="piutang">Piutang</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Nominal</label>
+        <input type="number" id="nominal" placeholder="Masukkan nominal" />
+      </div>
+
+      <div>
+        <label>Keterangan</label>
+        <input type="text" id="keterangan" placeholder="Contoh: Penjualan / Beli barang" />
+      </div>
+
+      <button type="button" onclick="tambahTransaksi()">Tambah Transaksi</button>
+    </div>
+  </div>
+
+  <!-- RINGKASAN -->
+  <div class="card">
+    <div class="summary">
+      <div class="box">
+        <h3>Saldo Akhir</h3>
+        <p id="saldoAkhir">Rp 0</p>
+      </div>
+      <div class="box">
+        <h3>Total Piutang</h3>
+        <p id="totalPiutang">Rp 0</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- OUTPUT TRANSAKSI -->
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Tanggal & Keterangan</th>
+          <th>Jenis</th>
+          <th>Nominal</th>
+        </tr>
+      </thead>
+      <tbody id="listTransaksi"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let saldo = 0;
+    let piutang = 0;
+    let transaksi = [];
+
+    function formatRupiah(num) {
+      return 'Rp ' + num.toLocaleString('id-ID');
+    }
+
+    function loadData() {
+      // set default tanggal hari ini (penting untuk Android)
+      const today = new Date().toISOString().split('T')[0];
+      const tanggalInput = document.getElementById('tanggal');
+      if (tanggalInput && !tanggalInput.value) tanggalInput.value = today;
+
+      const data = JSON.parse(localStorage.getItem('pembukuan'));
+      if (!data) return;
+
+      saldo = data.saldo;
+      piutang = data.piutang;
+      transaksi = data.transaksi || [];
+
+      document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
+      document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
+      document.getElementById('saldoAwal').disabled = true;
+
+      transaksi.forEach(t => renderRow(t));
+    }
+
+    function saveData() {
+      localStorage.setItem('pembukuan', JSON.stringify({ saldo, piutang, transaksi }));
+    }
+
+    function renderRow(t) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${t.tanggal}<br><small>${t.ket}</small></td>
+        <td>${t.jenis}</td>
+        <td class="${t.jenis === 'credit' ? 'in' : t.jenis === 'debit' ? 'out' : ''}">${formatRupiah(t.nominal)}</td>
+      `;
+      document.getElementById('listTransaksi').appendChild(tr);
+    }
+
+    function tambahTransaksi() {
+      const saldoAwalInput = document.getElementById('saldoAwal');
+      const jenis = document.getElementById('jenis').value;
+      const nominal = Number(document.getElementById('nominal').value);
+      const ket = document.getElementById('keterangan').value;
+      const tanggal = document.getElementById('tanggal').value;
+
+      if (saldo === 0 && saldoAwalInput.value) {
+        saldo = Number(saldoAwalInput.value);
+        saldoAwalInput.disabled = true;
+      }
+
+      if (!nominal || !tanggal) return alert('Nominal dan tanggal wajib diisi');
+
+      if (jenis === 'credit') saldo += nominal;
+      if (jenis === 'debit') saldo -= nominal;
+      if (jenis === 'piutang') piutang += nominal;
+
+      const t = { tanggal, jenis, nominal, ket };
+      transaksi.push(t);
+
+      document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
+      document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
+
+      renderRow(t);
+      saveData();
+
+      document.getElementById('nominal').value = '';
+      document.getElementById('keterangan').value = '';
+    }
+
+    loadData();
+  </script>
+
+</body>
+</html>
