@@ -129,9 +129,8 @@
 </head>
 <body>
 
-  <h1>Pembukuan Sederhana</h1>
+  <h1>Pembukuan Sederhana By Mulya</h1>
 
-  <!-- FORM INPUT -->
   <div class="card">
     <div class="grid">
       <div>
@@ -163,11 +162,10 @@
         <input type="text" id="keterangan" placeholder="Contoh: Penjualan / Beli barang" />
       </div>
 
-      <button type="button" onclick="tambahTransaksi()">Tambah Transaksi</button>
+      <button type="button" id="btnTambah">Tambah Transaksi</button>
     </div>
   </div>
 
-  <!-- RINGKASAN -->
   <div class="card">
     <div class="summary">
       <div class="box">
@@ -181,7 +179,6 @@
     </div>
   </div>
 
-  <!-- OUTPUT TRANSAKSI -->
   <div class="card">
     <table>
       <thead>
@@ -189,6 +186,7 @@
           <th>Tanggal & Keterangan</th>
           <th>Jenis</th>
           <th>Nominal</th>
+          <th>Aksi</th>
         </tr>
       </thead>
       <tbody id="listTransaksi"></tbody>
@@ -196,44 +194,51 @@
   </div>
 
   <script>
+    // === GLOBAL STATE (dibuat global agar aman di semua browser & viewer) ===
     let saldo = 0;
     let piutang = 0;
     let transaksi = [];
 
     function formatRupiah(num) {
-      return 'Rp ' + num.toLocaleString('id-ID');
+      return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
     }
 
     function loadData() {
-      // set default tanggal hari ini (penting untuk Android)
-      const today = new Date().toISOString().split('T')[0];
-      const tanggalInput = document.getElementById('tanggal');
-      if (tanggalInput && !tanggalInput.value) tanggalInput.value = today;
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const tanggalInput = document.getElementById('tanggal');
+        if (tanggalInput && !tanggalInput.value) tanggalInput.value = today;
 
-      const data = JSON.parse(localStorage.getItem('pembukuan'));
-      if (!data) return;
+        const raw = localStorage.getItem('pembukuan');
+        if (!raw) return;
 
-      saldo = data.saldo;
-      piutang = data.piutang;
-      transaksi = data.transaksi || [];
+        const data = JSON.parse(raw);
+        saldo = data.saldo || 0;
+        piutang = data.piutang || 0;
+        transaksi = data.transaksi || [];
 
-      document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
-      document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
-      document.getElementById('saldoAwal').disabled = true;
+        document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
+        document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
+        document.getElementById('saldoAwal').disabled = true;
 
-      transaksi.forEach(t => renderRow(t));
+        document.getElementById('listTransaksi').innerHTML = '';
+        transaksi.forEach((t,i) => renderRow(t,i));
+      } catch (e) {
+        alert('Browser memblokir penyimpanan lokal');
+      }
     }
 
     function saveData() {
       localStorage.setItem('pembukuan', JSON.stringify({ saldo, piutang, transaksi }));
     }
 
-    function renderRow(t) {
+    function renderRow(t, index) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${t.tanggal}<br><small>${t.ket}</small></td>
+        <td>${t.tanggal}<br><small>${t.ket || ''}</small></td>
         <td>${t.jenis}</td>
         <td class="${t.jenis === 'credit' ? 'in' : t.jenis === 'debit' ? 'out' : ''}">${formatRupiah(t.nominal)}</td>
+        <td><button onclick="hapusTransaksi(${index})" style="background:#dc2626">Hapus</button></td>
       `;
       document.getElementById('listTransaksi').appendChild(tr);
     }
@@ -245,12 +250,15 @@
       const ket = document.getElementById('keterangan').value;
       const tanggal = document.getElementById('tanggal').value;
 
+      if (!nominal || !tanggal) {
+        alert('Nominal dan tanggal wajib diisi');
+        return;
+      }
+
       if (saldo === 0 && saldoAwalInput.value) {
         saldo = Number(saldoAwalInput.value);
         saldoAwalInput.disabled = true;
       }
-
-      if (!nominal || !tanggal) return alert('Nominal dan tanggal wajib diisi');
 
       if (jenis === 'credit') saldo += nominal;
       if (jenis === 'debit') saldo -= nominal;
@@ -262,13 +270,32 @@
       document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
       document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
 
-      renderRow(t);
+      renderRow(t, transaksi.length - 1);
       saveData();
 
       document.getElementById('nominal').value = '';
       document.getElementById('keterangan').value = '';
     }
 
+    function hapusTransaksi(index) {
+      const t = transaksi[index];
+      if (!t) return;
+      if (!confirm('Hapus transaksi ini?')) return;
+
+      if (t.jenis === 'credit') saldo -= t.nominal;
+      if (t.jenis === 'debit') saldo += t.nominal;
+      if (t.jenis === 'piutang') piutang -= t.nominal;
+
+      transaksi.splice(index, 1);
+      document.getElementById('listTransaksi').innerHTML = '';
+      transaksi.forEach((t,i) => renderRow(t,i));
+
+      document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
+      document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
+      saveData();
+    }
+
+    // init langsung (tanpa DOMContentLoaded agar aman di semua viewer)
     loadData();
   </script>
 
