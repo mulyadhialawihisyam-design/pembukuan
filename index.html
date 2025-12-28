@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pembukuan Sederhana</title>
+
   <style>
     :root {
       --bg: #f4f6f8;
@@ -61,11 +62,6 @@
       font-size: 14px;
     }
 
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
     button {
       background: var(--primary);
       color: #fff;
@@ -74,17 +70,17 @@
       cursor: pointer;
     }
 
-    button:hover {
-      opacity: .9;
+    button.danger {
+      background: var(--danger);
     }
 
     .summary {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 12px;
     }
 
-    .summary .box {
+    .box {
       padding: 12px;
       border-radius: 12px;
       background: #f9fafb;
@@ -114,190 +110,203 @@
     th, td {
       padding: 10px;
       border-bottom: 1px solid #e5e7eb;
-      text-align: left;
     }
 
     th {
       color: var(--muted);
-      font-weight: 600;
+    }
+
+    footer {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      opacity: 0.8;
     }
 
     @media (min-width: 640px) {
-      body { max-width: 480px; margin: auto; }
+      body {
+        max-width: 480px;
+        margin: auto;
+      }
     }
   </style>
 </head>
+
 <body>
 
-  <h1>Pembukuan Sederhana By Mulya</h1>
+<h1>Pembukuan Sederhana</h1>
 
-  <div class="card">
-    <div class="grid">
-      <div>
-        <label>Saldo Awal</label>
-        <input type="number" id="saldoAwal" placeholder="Masukkan saldo awal" />
-      </div>
+<div class="card">
+  <div class="grid">
+    <div>
+      <label>Saldo Awal</label>
+      <input type="number" id="saldoAwal" />
+    </div>
 
-      <div>
-        <label>Tanggal Transaksi</label>
-        <input type="date" id="tanggal" />
-      </div>
+    <div>
+      <label>Tanggal</label>
+      <input type="date" id="tanggal" />
+    </div>
 
-      <div>
-        <label>Jenis Transaksi</label>
-        <select id="jenis">
-          <option value="credit">Credit (Uang Masuk)</option>
-          <option value="debit">Debit (Uang Keluar)</option>
-          <option value="piutang">Piutang</option>
-        </select>
-      </div>
+    <div>
+      <label>Jenis Transaksi</label>
+      <select id="jenis">
+        <option value="credit">Credit (Masuk)</option>
+        <option value="debit">Debit (Keluar)</option>
+        <option value="piutang">Piutang</option>
+        <option value="bayar">Bayar Hutang</option>
+      </select>
+    </div>
 
-      <div>
-        <label>Nominal</label>
-        <input type="number" id="nominal" placeholder="Masukkan nominal" />
-      </div>
+    <div>
+      <label>Nominal</label>
+      <input type="number" id="nominal" />
+    </div>
 
-      <div>
-        <label>Keterangan</label>
-        <input type="text" id="keterangan" placeholder="Contoh: Penjualan / Beli barang" />
-      </div>
+    <div>
+      <label>Keterangan</label>
+      <input type="text" id="keterangan" />
+    </div>
 
-      <button type="button" id="btnTambah">Tambah Transaksi</button>
+    <button id="btnTambah">Tambah Transaksi</button>
+    <button class="danger" onclick="resetData()">Reset Semua Data</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="summary">
+    <div class="box">
+      <h3>Saldo Akhir</h3>
+      <p id="saldoAkhir">Rp 0</p>
+    </div>
+    <div class="box">
+      <h3>Piutang</h3>
+      <p id="totalPiutang">Rp 0</p>
+    </div>
+    <div class="box">
+      <h3>Aset</h3>
+      <p id="aset">Rp 0</p>
     </div>
   </div>
+</div>
 
-  <div class="card">
-    <div class="summary">
-      <div class="box">
-        <h3>Saldo Akhir</h3>
-        <p id="saldoAkhir">Rp 0</p>
-      </div>
-      <div class="box">
-        <h3>Total Piutang</h3>
-        <p id="totalPiutang">Rp 0</p>
-      </div>
-    </div>
-  </div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Tanggal & Ket</th>
+        <th>Jenis</th>
+        <th>Nominal</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+</div>
 
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>Tanggal & Keterangan</th>
-          <th>Jenis</th>
-          <th>Nominal</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
-      <tbody id="listTransaksi"></tbody>
-    </table>
-  </div>
+<footer>
+  Developed by <strong>Mulya.id</strong>
+</footer>
 
-  <script>
-    // === GLOBAL STATE (dibuat global agar aman di semua browser & viewer) ===
-    let saldo = 0;
-    let piutang = 0;
-    let transaksi = [];
+<script>
+let saldo = 0;
+let piutang = 0;
+let transaksi = [];
 
-    function formatRupiah(num) {
-      return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
-    }
+const format = n => 'Rp ' + n.toLocaleString('id-ID');
 
-    function loadData() {
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const tanggalInput = document.getElementById('tanggal');
-        if (tanggalInput && !tanggalInput.value) tanggalInput.value = today;
+function save() {
+  localStorage.setItem('pembukuan', JSON.stringify({ saldo, piutang, transaksi }));
+}
 
-        const raw = localStorage.getItem('pembukuan');
-        if (!raw) return;
+function load() {
+  const d = JSON.parse(localStorage.getItem('pembukuan'));
+  if (!d) return;
+  saldo = d.saldo;
+  piutang = d.piutang;
+  transaksi = d.transaksi;
+  document.getElementById('saldoAwal').disabled = true;
+  render();
+}
 
-        const data = JSON.parse(raw);
-        saldo = data.saldo || 0;
-        piutang = data.piutang || 0;
-        transaksi = data.transaksi || [];
+function render() {
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  transaksi.forEach((t,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.tanggal}<br><small>${t.ket}</small></td>
+      <td>${t.jenis}</td>
+      <td>${format(t.nominal)}</td>
+      <td><button onclick="hapus(${i})">Hapus</button></td>
+    `;
+    list.appendChild(tr);
+  });
 
-        document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
-        document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
-        document.getElementById('saldoAwal').disabled = true;
+  document.getElementById('saldoAkhir').innerText = format(saldo);
+  document.getElementById('totalPiutang').innerText = format(piutang);
+  document.getElementById('aset').innerText = format(saldo - piutang);
+}
 
-        document.getElementById('listTransaksi').innerHTML = '';
-        transaksi.forEach((t,i) => renderRow(t,i));
-      } catch (e) {
-        alert('Browser memblokir penyimpanan lokal');
-      }
-    }
+document.getElementById('btnTambah').onclick = () => {
+  const jenis = jenisEl.value;
+  const nominal = +nominalEl.value;
+  if (!nominal) return alert('Nominal wajib');
 
-    function saveData() {
-      localStorage.setItem('pembukuan', JSON.stringify({ saldo, piutang, transaksi }));
-    }
+  if (!saldo && saldoAwal.value) {
+    saldo = +saldoAwal.value;
+    saldoAwal.disabled = true;
+  }
 
-    function renderRow(t, index) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${t.tanggal}<br><small>${t.ket || ''}</small></td>
-        <td>${t.jenis}</td>
-        <td class="${t.jenis === 'credit' ? 'in' : t.jenis === 'debit' ? 'out' : ''}">${formatRupiah(t.nominal)}</td>
-        <td><button onclick="hapusTransaksi(${index})" style="background:#dc2626">Hapus</button></td>
-      `;
-      document.getElementById('listTransaksi').appendChild(tr);
-    }
+  if (jenis === 'credit') saldo += nominal;
+  if (jenis === 'debit') saldo -= nominal;
+  if (jenis === 'piutang') piutang += nominal;
+  if (jenis === 'bayar') {
+    if (nominal > piutang) return alert('Melebihi piutang');
+    piutang -= nominal;
+  }
 
-    function tambahTransaksi() {
-      const saldoAwalInput = document.getElementById('saldoAwal');
-      const jenis = document.getElementById('jenis').value;
-      const nominal = Number(document.getElementById('nominal').value);
-      const ket = document.getElementById('keterangan').value;
-      const tanggal = document.getElementById('tanggal').value;
+  transaksi.push({
+    tanggal: tanggal.value,
+    jenis,
+    nominal,
+    ket: keterangan.value
+  });
 
-      if (!nominal || !tanggal) {
-        alert('Nominal dan tanggal wajib diisi');
-        return;
-      }
+  save();
+  render();
+  nominalEl.value = '';
+  keterangan.value = '';
+};
 
-      if (saldo === 0 && saldoAwalInput.value) {
-        saldo = Number(saldoAwalInput.value);
-        saldoAwalInput.disabled = true;
-      }
+function hapus(i) {
+  const t = transaksi[i];
+  if (t.jenis === 'credit') saldo -= t.nominal;
+  if (t.jenis === 'debit') saldo += t.nominal;
+  if (t.jenis === 'piutang') piutang -= t.nominal;
+  if (t.jenis === 'bayar') piutang += t.nominal;
 
-      if (jenis === 'credit') saldo += nominal;
-      if (jenis === 'debit') saldo -= nominal;
-      if (jenis === 'piutang') piutang += nominal;
+  transaksi.splice(i,1);
+  save();
+  render();
+}
 
-      const t = { tanggal, jenis, nominal, ket };
-      transaksi.push(t);
+function resetData() {
+  if (!confirm('Reset semua data?')) return;
+  localStorage.removeItem('pembukuan');
+  location.reload();
+}
 
-      document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
-      document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
+const saldoAwal = document.getElementById('saldoAwal');
+const jenisEl = document.getElementById('jenis');
+const nominalEl = document.getElementById('nominal');
+const keterangan = document.getElementById('keterangan');
+const tanggal = document.getElementById('tanggal');
 
-      renderRow(t, transaksi.length - 1);
-      saveData();
-
-      document.getElementById('nominal').value = '';
-      document.getElementById('keterangan').value = '';
-    }
-
-    function hapusTransaksi(index) {
-      const t = transaksi[index];
-      if (!t) return;
-      if (!confirm('Hapus transaksi ini?')) return;
-
-      if (t.jenis === 'credit') saldo -= t.nominal;
-      if (t.jenis === 'debit') saldo += t.nominal;
-      if (t.jenis === 'piutang') piutang -= t.nominal;
-
-      transaksi.splice(index, 1);
-      document.getElementById('listTransaksi').innerHTML = '';
-      transaksi.forEach((t,i) => renderRow(t,i));
-
-      document.getElementById('saldoAkhir').innerText = formatRupiah(saldo);
-      document.getElementById('totalPiutang').innerText = formatRupiah(piutang);
-      saveData();
-    }
-
-    // init langsung (tanpa DOMContentLoaded agar aman di semua viewer)
-    loadData();
-  </script>
+tanggal.value = new Date().toISOString().split('T')[0];
+load();
+</script>
 
 </body>
 </html>
