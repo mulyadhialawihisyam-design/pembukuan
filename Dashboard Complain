@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard Komplain — Dark</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root{
+      --bg-1: #0f1724;
+      --bg-2: #111827;
+      --card: rgba(255,255,255,0.04);
+      --muted: #94a3b8;
+      --accent: #7c3aed;
+      --glass: rgba(255,255,255,0.03);
+      --radius: 14px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(135deg, #0b1220 0%, #1b1730 45%, #2b1b3b 100%);
+      color: #e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding: 18px;
+    }
+
+    .container{max-width:1400px;margin:12px auto;padding:0 18px}
+
+    /* Header */
+    header{
+      display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-radius:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.03);
+      box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+    }
+    header .left{display:flex;align-items:center;gap:12px}
+    header h1{font-size:20px;color:var(--accent);display:flex;align-items:center;gap:10px}
+    header .desc{color:var(--muted);font-size:13px}
+    #reloadBtn{
+      background: linear-gradient(90deg, #a78bfa, #7c3aed);
+      color:white;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;
+      box-shadow: 0 6px 18px rgba(124,58,237,0.18); display:flex;align-items:center;gap:8px;
+    }
+    #reloadBtn:active{transform:translateY(1px)}
+
+    /* Grid */
+    .grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px}
+    @media(min-width:768px){.grid{grid-template-columns:350px 1fr}}
+    @media(min-width:1200px){.grid{grid-template-columns:350px 1fr 430px}}
+
+    /* Card */
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: var(--radius); padding:18px; border:1px solid rgba(255,255,255,0.03);
+      box-shadow: 0 10px 30px rgba(2,6,23,0.6); transition: all .2s ease;
+    }
+    .card:hover{transform:translateY(-6px)}
+
+    /* Left column */
+    .input-container{display:flex;gap:8px;align-items:center}
+    input[type="text"]{
+      padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.02); color: #f8fafc; width:100%;
+    }
+    input::placeholder{color: rgba(255,255,255,0.35)}
+    .avatar{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;
+      background: linear-gradient(180deg,#202033,#2c2740); color:#c7b6ff; border:2px solid rgba(124,58,237,0.28)}
+    .profile{display:flex;gap:14px;align-items:center}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+    .stat{background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); padding:14px;border-radius:10px;text-align:center;border:1px solid rgba(255,255,255,0.02)}
+    .stat .label{font-size:13px;color:var(--muted)}
+    .stat .value{font-size:28px;color:#f3f4f6;font-weight:700;margin-top:6px}
+
+    /* chart area */
+    .chart-wrap{height:420px;position:relative}
+    .legend-list{margin-top:12px}
+    .legend-item{display:flex;justify-content:space-between;padding:10px;border-radius:10px;background: rgba(255,255,255,0.02);margin-bottom:8px;border-left:6px solid rgba(255,255,255,0.04)}
+    .alert{padding:12px;border-radius:10px;background: linear-gradient(90deg,#2a1b10,#3a2b18);border:1px solid rgba(255,255,255,0.03);color:#ffebc2;display:flex;gap:10px;align-items:center}
+
+    /* loading overlay */
+    .loadingOverlay{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:9999;backdrop-filter: blur(2px);display:none}
+    .spinner{width:52px;height:52px;border-radius:50%;border:6px solid rgba(255,255,255,0.08);border-top:6px solid var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .muted{color:var(--muted)}
+    .title-sm{font-weight:700;font-size:16px}
+    .legend-label{font-weight:600}
+
+    /* small screens */
+    @media(max-width:600px){
+      .chart-wrap{height:300px}
+      header{flex-direction:column;align-items:flex-start;gap:10px}
+      #reloadBtn{align-self:flex-end}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="left">
+        <h1><i class="fas fa-chart-line"></i>&nbsp;Dashboard Komplain Mulya Team</h1>
+        <div class="desc muted">Data berasal dari sheet  (tanggal dd/MM/yyyy)</div>
+      </div>
+      <div>
+        <button id="reloadBtn" title="Muat ulang data"><i class="fas fa-sync-alt"></i>&nbsp;Muat Ulang</button>
+      </div>
+    </header>
+
+    <div class="grid" style="margin-top:18px">
+      <!-- Left column -->
+      <div class="card">
+        <label class="muted"><i class="fas fa-user"></i>&nbsp;Pilih Karyawan</label>
+        <div class="input-container" style="margin-top:10px">
+          <input type="text" id="employeeInput" list="employeeList" placeholder="Ketik nama PIC..." autocomplete="off">
+          <datalist id="employeeList"></datalist>
+          <button id="refreshBtnSmall" title="Muat ulang data kecil" style="background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:#f3f4f6"><i class="fas fa-sync-alt"></i></button>
+        </div>
+
+        <div id="profileBox" style="margin-top:20px">
+          <div class="profile">
+            <div id="avatar" class="avatar">MM</div>
+            <div>
+              <div id="profileName" style="font-weight:700;font-size:18px">—</div>
+              <div id="profileSub" class="muted" style="font-size:13px;margin-top:4px">PIC (kolom F)</div>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <div class="label muted">Total Komplain (bulan terakhir)</div>
+              <div id="totalThisMonth" class="value">0</div>
+            </div>
+            <div class="stat">
+              <div class="label muted">Unique Invoice</div>
+              <div id="uniqueInvoices" class="value">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Middle column -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="title-sm"><i class="fas fa-chart-pie"></i>&nbsp;Distribusi Komplain — Bulan Terbaru</div>
+            <div id="latestMonthLabel" class="muted" style="margin-top:6px">—</div>
+          </div>
+          <div id="alertContainer" style="min-width:240px"></div>
+        </div>
+
+        <div class="chart-wrap" style="margin-top:12px">
+          <canvas id="pieChart"></canvas>
+        </div>
+
+        <div id="pieLegend" class="legend-list"></div>
+      </div>
+
+      <!-- Right column -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div class="title-sm"><i class="fas fa-chart-bar"></i>&nbsp;History 3 Bulan Sebelumnya</div>
+            <div class="muted">Jumlah komplain per bulan</div>
+          </div>
+        </div>
+
+        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading" class="loadingOverlay"><div class="spinner"></div></div>
+
+<script>
+/*
+  Full dashboard (dark mode) — uses your Apps Script endpoint
+  JSON sample keys expected: tanggal (dd/MM/yyyy), kasus, invoice, pic_yang_melakukan_kesalahan, weekmonth
+*/
+const DATA_URL = "https://script.google.com/macros/s/AKfycbyWBWuNZs9m3ixRZ6NUrEtX8pxhtdvPRmh5Yw_70J6GDdikF76QByva9zRB5mzA9plR/exec";
+
+let rawData = [];
+let employees = [];
+let selectedEmployee = null;
+let latestMonthInfo = null;
+let pieChart = null;
+let barChart = null;
+
+const $ = id => document.getElementById(id);
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('reloadBtn').addEventListener('click', reloadData);
+  $('refreshBtnSmall').addEventListener('click', reloadData);
+  $('employeeInput').addEventListener('input', handleEmployeeInput);
+  loadAndRender();
+});
+
+async function showLoading(flag){
+  $('loading').style.display = flag ? 'flex' : 'none';
+}
+
+/* initial load */
+async function loadAndRender(){
+  showLoading(true);
+  try {
+    const res = await fetch(DATA_URL, {cache: "no-store"});
+    if(!res.ok) throw new Error("Gagal memuat data: " + res.status);
+    const json = await res.json();
+    rawData = Array.isArray(json) ? json : (json.data || json.rows || []);
+    // normalize lower-case keys
+    rawData = rawData.map(r => {
+      const n = {};
+      for(const k in r) n[k.toLowerCase()] = r[k];
+      return n;
+    });
+    buildEmployeeList();
+    if (!selectedEmployee && employees.length) {
+      selectedEmployee = employees[0];
+      $('employeeInput').value = selectedEmployee;
+    }
+    renderForEmployee(selectedEmployee || (employees[0] || null));
+  } catch(e){
+    console.error(e);
+    alert("Gagal memuat data dari API.");
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* reload only data */
+async function reloadData(){
+  showLoading(true);
+  try {
+    const res = await fetch(DATA_URL, {cache: "no-store"});
+    if(!res.ok) throw new Error("Gagal memuat data: " + res.status);
+    const json = await res.json();
+    rawData = Array.isArray(json) ? json : (json.data || json.rows || []);
+    rawData = rawData.map(r => {
+      const n = {};
+      for(const k in r) n[k.toLowerCase()] = r[k];
+      return n;
+    });
+    const prev = selectedEmployee;
+    buildEmployeeList();
+    if(prev && employees.includes(prev)) selectedEmployee = prev;
+    else {
+      selectedEmployee = employees[0] || null;
+      $('employeeInput').value = selectedEmployee || '';
+    }
+    renderForEmployee(selectedEmployee);
+    // small button spin feedback
+    $('reloadBtn').animate([{transform:'rotate(0deg)'},{transform:'rotate(360deg)'}],{duration:600});
+  } catch(e){
+    console.error(e);
+    alert("Gagal memuat ulang data.");
+  } finally { showLoading(false); }
+}
+
+/* build datalist for PIC */
+function buildEmployeeList(){
+  const key = 'pic_yang_melakukan_kesalahan';
+  const set = new Set();
+  rawData.forEach(r=>{
+    const name = (r[key] || "").toString().trim();
+    if(name) set.add(name);
+  });
+  employees = Array.from(set).sort((a,b)=>a.localeCompare(b));
+  const dl = $('employeeList');
+  dl.innerHTML = "";
+  employees.forEach(n=>{
+    const o = document.createElement('option'); o.value = n; dl.appendChild(o);
+  });
+}
+
+/* handle typing/selecting PIC */
+function handleEmployeeInput(e){
+  const v = e.target.value.trim();
+  if(employees.includes(v)){
+    selectedEmployee = v;
+    renderForEmployee(v);
+  }
+}
+
+/* main render */
+function renderForEmployee(name){
+  if(!name){
+    $('profileName').textContent = '—';
+    $('avatar').textContent = 'NA';
+    renderPie([],[]);
+    renderBar([]);
+    $('uniqueInvoices').textContent = '0';
+    $('totalThisMonth').textContent = '0';
+    $('latestMonthLabel').textContent = '—';
+    return;
+  }
+
+  $('profileName').textContent = name;
+  $('profileSub').textContent = 'PIC (kolom F)';
+  setAvatar(name);
+
+  const dateKey = 'tanggal';
+  const invoiceKey = 'invoice';
+  const kasusKey = 'kasus';
+  const picKey = 'pic_yang_melakukan_kesalahan';
+
+  // parse dates across data and find latest
+  const valid = rawData.map(r=>({r,d:parseDateStr(r[dateKey])})).filter(x=>x.d);
+  if(valid.length === 0){
+    $('latestMonthLabel').textContent = 'Tidak ada data tanggal';
+    renderPie([],[]); renderBar([]); return;
+  }
+  valid.sort((a,b)=>b.d - a.d);
+  const latestDate = valid[0].d;
+  const latestMonth = latestDate.getMonth();
+  const latestYear = latestDate.getFullYear();
+  latestMonthInfo = {month: latestMonth, year: latestYear};
+  $('latestMonthLabel').textContent = `${pad(latestMonth+1)}/${latestYear}`;
+
+  // rows for this PIC
+  const rowsForEmployee = rawData.filter(r => ((r[picKey]||"").toString().trim() === name));
+  // rows in latest month
+  const rowsThisMonth = rowsForEmployee.filter(r => {
+    const d = parseDateStr(r[dateKey]);
+    return d && d.getMonth() === latestMonth && d.getFullYear() === latestYear;
+  });
+
+  // unique invoices
+  const uniqueInvoices = new Set(rowsThisMonth.map(r=>((r[invoiceKey]||"")+"").trim()).filter(Boolean));
+  $('uniqueInvoices').textContent = uniqueInvoices.size;
+  $('totalThisMonth').textContent = rowsThisMonth.length;
+
+  // alert if > 2
+  const alertContainer = $('alertContainer'); alertContainer.innerHTML = "";
+  if(rowsThisMonth.length > 2){
+    const el = document.createElement('div'); el.className = 'alert';
+    el.innerHTML = `<i class="fas fa-exclamation-triangle"></i><div style="margin-left:6px"><strong>Perhatian:</strong><div>Jumlah komplain bulan ini ${rowsThisMonth.length} (lebih dari 2).</div></div>`;
+    alertContainer.appendChild(el);
+  }
+
+  // pie: group by kasus, count unique invoice per kasus
+  const map = new Map();
+  rowsThisMonth.forEach(r=>{
+    const k = ((r[kasusKey]||"")+"").trim() || "(Tanpa Kasus)";
+    const inv = ((r[invoiceKey]||"")+"").trim();
+    if(!map.has(k)) map.set(k,new Set());
+    if(inv) map.get(k).add(inv);
+  });
+  const pieLabels = Array.from(map.keys());
+  const pieData = pieLabels.map(k => map.get(k).size);
+
+  renderPie(pieLabels, pieData);
+
+  // bar: last 3 months previous to latestDate
+  const history = getHistory3Months(rowsForEmployee, latestMonthInfo);
+  renderBar(history);
+}
+
+/* render functions for charts with multicolor palette */
+function renderPie(labels, data){
+  if(pieChart) pieChart.destroy();
+  const ctx = $('pieChart').getContext('2d');
+  const colors = genBrightPalette(labels.length);
+  pieChart = new Chart(ctx, {
+    type: 'pie',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#0b1220', borderWidth: 2 }] },
+    options: { maintainAspectRatio:false, plugins:{legend:{display:false}} }
+  });
+
+  // legend
+  const legend = $('pieLegend'); legend.innerHTML = "";
+  labels.forEach((lbl,i)=>{
+    const color = colors[i];
+    const val = data[i]||0;
+    const item = document.createElement('div'); item.className='legend-item';
+    item.innerHTML = `<div style="display:flex;gap:10px;align-items:center"><span style="width:12px;height:12px;background:${color};display:inline-block;border-radius:3px"></span><strong style="color:#eaf2ff">${lbl}</strong></div><div style="font-weight:700;color:${color}">${val}</div>`;
+    legend.appendChild(item);
+  });
+}
+
+function renderBar(history){
+  if(barChart) barChart.destroy();
+  const ctx = $('barChart').getContext('2d');
+  const colors = genBrightPalette(history.length);
+  barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: history.map(h=>h.label),
+      datasets: [{ label:'Komplain', data: history.map(h=>h.value), backgroundColor: colors }]
+    },
+    options: {
+      maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } }
+    }
+  });
+}
+
+/* palettes - generate lively colors */
+function genBrightPalette(n){
+  const base = ['#FF6B6B','#FF8A5B','#FFD166','#4ECDC4','#06D6A0','#4CC9F0','#6A4C93','#A34DD6','#FF4D8F','#FFD54A'];
+  return Array.from({length:n}, (_,i) => base[i % base.length]);
+}
+
+/* utils */
+function pad(n){ return n < 10 ? '0'+n : n; }
+function parseDateStr(s){
+  if(!s) return null;
+  s = String(s).trim();
+  const parts = s.split(/[/\-.]/).map(x=>x.trim());
+  if(parts.length<3) return null;
+  const dd = parseInt(parts[0],10), mm = parseInt(parts[1],10), yyyy = parseInt(parts[2],10);
+  if(isNaN(dd)||isNaN(mm)||isNaN(yyyy)) return null;
+  return new Date(yyyy, mm-1, dd);
+}
+function setAvatar(name){
+  const el = $('avatar');
+  const parts = (name||'').split(/\s+/).filter(Boolean);
+  const initials = (parts[0]?.[0] || '') + (parts[parts.length-1]?.[0] || '');
+  el.textContent = initials.toUpperCase() || 'NA';
+}
+
+/* history last 3 months (previous months relative to latestMonthInfo) */
+function getHistory3Months(list, info){
+  const out = [];
+  for(let i=1;i<=3;i++){
+    let m = info.month - i;
+    let y = info.year;
+    if(m < 0) { m += 12; y -= 1; }
+    const label = `${pad(m+1)}/${y}`;
+    const count = list.filter(r=>{
+      const d = parseDateStr(r['tanggal']);
+      return d && d.getMonth() === m && d.getFullYear() === y;
+    }).length;
+    out.push({ label, value: count });
+  }
+  return out.reverse(); // oldest first
+}
+</script>
+</body>
+</html>
